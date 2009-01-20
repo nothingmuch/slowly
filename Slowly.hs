@@ -30,7 +30,7 @@ runWorkers body args = do
             return $ fromList tids
             where
                 newWorker arg = do
-                    tid  <- forkIO $ wrappedBody
+                    tid  <- forkIO wrappedBody
                     return tid
                     where
                         wrappedBody = do
@@ -56,7 +56,10 @@ notify chan x = do
     tid <- myThreadId
     writeChan chan ( tid, Just (time, x) )
 
-bnotify chan x = ioAction $ notify chan x
+-- boobies! with bling!
+hotAction = (.)$(.) ioAction
+
+bnotify = hotAction notify
 
 fetchUri chan uri = browse $ do
     setOutHandler ( const $ return () )
