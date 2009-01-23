@@ -14,6 +14,11 @@ data Output a b = Exit a
                 | Data a b
     deriving Show
 
+-- TODO
+-- either use Reader or create a Collector monad that encapsulates 'chan' and
+-- provides 'notify' functionality. This will decouple the collector body from
+-- Control.Concurrent
+
 -- this routine starts a bunch of workers and waits for them
 -- all workers are given a channel to write events to
 -- when the worker is done it writes a Nothing to the channel
@@ -35,12 +40,12 @@ runWorkers body args output = do
                 -- when the body action is finished Nothing is written to the
                 -- channel to signal thread exit
                 newWorker arg = do
-                    tid  <- forkIO wrappedBody
+                    tid  <- forkIO wrapped
                     return tid
                     where
-                        wrappedBody = do
-                            body chan arg `finally` finish
-                        finish = do
+                        wrapped = run `finally` finish
+                        run     = body chan arg
+                        finish  = do
                             tid <- myThreadId
                             writeChan chan $ ( tid, Nothing )
         -- this function waits on all the workers
@@ -51,7 +56,7 @@ runWorkers body args output = do
             where
             loop                      = waitWorkers chan
             handleMsg (tid, Nothing)  = do
-                output $ Exit ( inputArg tid )
+                output $ Exit $ inputArg tid
                 if Data.Map.null remaining
                    then return ()
                    else loop remaining
@@ -60,6 +65,7 @@ runWorkers body args output = do
                 output $ Data ( inputArg tid ) msg
                 loop workers
             inputArg tid              = fromMaybe (error "zombie thread") $ Data.Map.lookup tid workers
+
 
 -- sends a notification on the channel
 notify chan x = do
