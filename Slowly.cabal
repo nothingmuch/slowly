@@ -1,0 +1,29 @@
+Name: Slowly
+Version: 0.0.1
+Cabal-Version: >= 1.2
+Build-type: Simple
+License: MIT
+Copyright: 
+  Copyright 2009 Infinity Interactive, Yuval Kogman
+Author: Yuval Kogman <nothingmuch@woobling.org>
+Maintainer: Yuval Kogman <nothingmuch@woobling.org>
+Homepage: http://www.iinteractive.com/
+Category: Network
+Synopsis: Service load testing framework
+Description: 
+
+ A library for loading and profiling performance of servers.
+ .
+ <git://git.iinteractive.com/Slowly.git>
+
+Library
+  Exposed-modules: 
+                 Slowly.Collector
+
+  GHC-options: -fwarn-missing-signatures -Wall
+  Build-depends: HTTP, containers, time, base, network
+
+Executable slowly
+  Main-is: slowly.hs
+
+  
