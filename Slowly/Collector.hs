@@ -70,6 +70,9 @@ runWorkers body args output = do
 -- sends a notification on the channel
 notify chan x = do
     time <- getCurrentTime
+    send chan ( time, x )
+
+send chan x = do
     tid  <- myThreadId
-    writeChan chan $ ( tid, Just ( time, x ) )
+    writeChan chan $ ( tid, Just x )
 
