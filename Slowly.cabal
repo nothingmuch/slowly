@@ -19,7 +19,7 @@ Library
                  Slowly.Collector
 
   GHC-options: -fwarn-missing-signatures -Wall
-  Build-depends: curl, HTTP, containers, time, base, network
+  Build-depends: random, uuid, json, curl, HTTP, containers, time, base >= 4, network
 
 Executable slowly
   Main-is: slowly.hs

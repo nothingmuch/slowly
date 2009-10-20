@@ -1,18 +1,78 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+
 module Slowly.Collector where
 
-import Data.Maybe (fromMaybe)
+import Data.Data
+import Data.Typeable
+
+import Data.Maybe (fromMaybe, catMaybes)
 
 import Control.Concurrent
 import Control.Exception (finally)
 
-import Data.Time.Clock (getCurrentTime)
-import Data.Time.Format ()
+import Data.Time (NominalDiffTime)
+import Data.Time.Clock.POSIX (getPOSIXTime)
 
 import Data.Map (null, lookup, delete, fromList)
 
+import Text.JSON
+import Text.JSON.Generic
+
+data EventType = Event_http_request_start
+               | Event_http_request_headers_end
+               | Event_http_request_body_data
+               | Event_http_response_start
+               | Event_http_response_headers_end
+               | Event_http_response_body_data
+               | Event_http_response_end
+               | EventCustom String
+    deriving (Eq,Ord, Show)
+
 data Output a b = Exit a
-                | Data a b
-    deriving Show
+                | Message a b
+    deriving (Eq, Show, Typeable, Data)
+
+data Datum
+    = Event { time      :: NominalDiffTime
+            , event     :: EventType
+            , resource  :: Maybe String
+            , created   :: Maybe String
+            , meta      :: Maybe JSValue
+            }
+   | Sample { time      :: NominalDiffTime
+            , sample    :: String
+            , resource  :: Maybe String
+            , meta      :: Maybe JSValue
+            }
+    deriving (Eq, Show)
+
+instance JSON Datum where
+    readJSON x = Error "unsupported"
+    showJSON x = JSObject $ toJSObject $ catMaybes fields
+        where
+            fields = [ typeJSON
+                     , timeJSON
+                     , resourceJSON
+                     , createdJSON
+                     , dataJSON
+                     ]
+            typeJSON = case x of
+                Event{}  -> Just $ ("event", eventJSON x )
+                Sample{} -> Just $ ("sample", toJSON $ sample x)
+            timeJSON = Just $ ("time", toJSON $ ( realToFrac $ time x :: Double ) )
+            resourceJSON = fmap (\ident -> ("resource", toJSON ident)) $ resource x
+            createdJSON = case x of
+                Event{} -> fmap (\ident -> ("created", toJSON ident)) $ created x
+                Sample{} -> Nothing
+            dataJSON = fmap (\d -> ("data", d)) $ meta x
+            eventJSON = toJSON . eventString . event
+            eventString (EventCustom name) = name
+            eventString num = map (\x -> if x == '_' then '.' else x) $ drop 6 $ show num
+
+    showJSONs x = toJSON "blah"
+    readJSONs x = Error "unsupported"
+
+
 
 -- TODO
 -- either use Reader or create a Collector monad that encapsulates 'chan' and
@@ -62,15 +122,24 @@ runWorkers body args output = do
                    else loop remaining
                 where remaining = delete tid workers
             handleMsg (tid, Just msg) = do
-                output $ Data ( inputArg tid ) msg
+                output $ Message ( inputArg tid ) msg
                 loop workers
             inputArg tid              = fromMaybe (error "zombie thread") $ Data.Map.lookup tid workers
 
+-- NominalDiffTime has no Data instace =(
+timestamp :: IO Double
+timestamp = getPOSIXTime >>= return . realToFrac
 
 -- sends a notification on the channel
 notify chan x = do
-    time <- getCurrentTime
-    send chan ( time, x )
+    time <- getPOSIXTime
+    send chan Event {
+        time = time,
+        event = EventCustom "foo",
+        created = Nothing,
+        resource = Nothing,
+        meta = x
+    }
 
 send chan x = do
     tid  <- myThreadId
