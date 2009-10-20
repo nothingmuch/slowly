@@ -9,11 +9,9 @@ Author: Yuval Kogman <nothingmuch@woobling.org>
 Maintainer: Yuval Kogman <nothingmuch@woobling.org>
 Homepage: http://www.iinteractive.com/
 Category: Network
-Synopsis: Service load testing framework
+Synopsis: HTTP profiling
 Description: 
 
- A library for loading and profiling performance of servers.
- .
  <git://git.iinteractive.com/Slowly.git>
 
 Library
